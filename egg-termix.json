@@ -1,0 +1,52 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-11-20T00:00:00-05:00",
+    "name": "Termix",
+    "author": "admin@example.com",
+    "description": "Termix self-hosted server management (SSH terminals, SFTP, tunnels, Docker, metrics, remote desktop). Connects out to your hosts over SSH; no agents. Data lives in /home/container/data. Put it behind a reverse proxy for HTTPS.",
+    "features": null,
+    "docker_images": {
+        "Termix 26.11.2": "ghcr.io/grampae/pterodactyl-termix:26.11.2"
+    },
+    "file_denylist": [],
+    "startup": "/entrypoint.sh",
+    "config": {
+        "files": "{}",
+        "startup": "{\n    \"done\": \"Termix backend started successfully\"\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\nset -euo pipefail\nexec bash /usr/local/share/pterodactyl-termix/install.sh\n",
+            "container": "ghcr.io/grampae/pterodactyl-termix:26.11.2",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Trusted Proxies",
+            "description": "Comma-separated IPs or CIDRs allowed to set the client IP through X-Forwarded-For, for example your NetBird proxy's address. Leave empty to trust the private ranges (10/8, 172.16/12, 192.168/16).",
+            "env_variable": "TRUSTED_PROXIES",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|max:512",
+            "field_type": "text"
+        },
+        {
+            "name": "Base Path",
+            "description": "Only if Termix is served under a sub-path such as /termix. Must start with / and match your reverse proxy. Leave empty to serve at the root.",
+            "env_variable": "BASE_PATH",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|regex:/^\\/[A-Za-z0-9_.\\/~-]*$/|max:128",
+            "field_type": "text"
+        }
+    ]
+}
