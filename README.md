@@ -29,7 +29,7 @@ Run the workflow manually with a new `termix_version`, add the new tag to the eg
 
 ## Notes
 
-- **`/tmp` size:** the web UI (tens of MB) is copied into `/tmp` on every start, because the root filesystem is read-only. Wings' `/tmp` defaults to 100 MB (`docker.tmpfs_size` in `/etc/pterodactyl/config.yml`). If it's too small, the entrypoint stops with a clear error. Raise the limit and restart Wings.
+- **Web UI copy:** under Wings the root filesystem is read-only, so upstream Termix would copy its ~140 MB web UI into the RAM-backed `/tmp` on every start, and that's more than Wings' default 100 MB `/tmp`. Instead, the image points `/app/html` at `/home/container/.termix-html` and fills it from a pristine copy in the image. That happens on the first start and again whenever the Termix version or `BASE_PATH` changes. It uses about 140 MB of the server's disk and no RAM, and you don't need to change `tmpfs_size`.
 - **Expected warning:** `WARNING: Data directory is not writable` in the log refers to the unused `/app/data` and can be ignored.
 - **`VOLUME /app/data`:** the upstream image declares this, so Docker creates an unused anonymous volume for the container. To clean them up now and then, run `docker volume ls -f dangling=true`.
 - **Access:** `data/` holds every saved host credential and the key that encrypts them. Anyone with file-manager or SFTP access to this server in the panel can read it, so keep panel access to it admin-only.

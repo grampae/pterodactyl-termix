@@ -13,6 +13,12 @@ USER root
 RUN useradd -m -d /home/container -s /bin/bash container \
     && chown -R container:container /home/container
 
+# Wings' root filesystem is read-only, so upstream would copy the ~140 MB web
+# UI into the RAM-backed /tmp on every start. Keep a pristine copy in /opt and
+# point /app/html at a writable copy in the server volume instead.
+RUN mv /app/html /opt/termix-html \
+    && ln -s /home/container/.termix-html /app/html
+
 COPY pterodactyl-entrypoint.sh /pterodactyl-entrypoint.sh
 COPY install.sh /usr/local/share/pterodactyl-termix/install.sh
 RUN chmod 0755 /pterodactyl-entrypoint.sh /usr/local/share/pterodactyl-termix/install.sh

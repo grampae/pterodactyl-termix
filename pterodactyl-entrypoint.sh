@@ -22,16 +22,35 @@ if [ ! -w "$DATA_DIR" ]; then
     exit 1
 fi
 
-# Wings runs a read-only root filesystem, so upstream copies the web UI into
-# /tmp on every start. /tmp is a Wings tmpfs (docker.tmpfs_size, 100 MB by
-# default), so check it fits before Termix half-starts.
-html_kb="$(du -sk /app/html | cut -f1)"
-tmp_free_kb="$(df -Pk /tmp | awk 'NR==2 {print $4}')"
-need_kb=$((html_kb + 20480))
-if [ "$tmp_free_kb" -lt "$need_kb" ]; then
-    echo "ERROR: /tmp has ${tmp_free_kb} KB free but Termix needs about ${need_kb} KB." >&2
-    echo "Raise docker.tmpfs_size in /etc/pterodactyl/config.yml on this node and restart Wings." >&2
-    exit 1
+# /app/html is a symlink to this folder in the server volume, so the web UI is
+# served from disk instead of being copied into the RAM-backed /tmp. Refresh it
+# from the image's pristine copy whenever the Termix version or BASE_PATH
+# changes, and apply upstream's path substitutions here.
+HTML_SRC=/opt/termix-html
+HTML_DST=/home/container/.termix-html
+termix_version="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' /app/package.json | head -n 1)"
+clean_base_path="${BASE_PATH:-}"
+clean_base_path="${clean_base_path%/}"
+case "$clean_base_path" in
+    "" | /*) ;;
+    *) echo "ERROR: BASE_PATH must start with /" >&2; exit 1 ;;
+esac
+case "$clean_base_path" in
+    *[!A-Za-z0-9_./~-]*) echo "ERROR: BASE_PATH contains unsupported characters" >&2; exit 1 ;;
+esac
+stamp="${termix_version}|${clean_base_path}"
+
+if [ ! -f "$HTML_DST/.pterodactyl-stamp" ] || [ "$(cat "$HTML_DST/.pterodactyl-stamp")" != "$stamp" ]; then
+    echo "Preparing the Termix ${termix_version} web UI in ${HTML_DST}..."
+    rm -rf "${HTML_DST}.tmp"
+    cp -R "$HTML_SRC" "${HTML_DST}.tmp"
+    find "${HTML_DST}.tmp" -name "sw.js" -exec sed -i "s|__TERMIX_SW_BASE_PATH__|${clean_base_path}|g" {} +
+    if [ -n "$clean_base_path" ]; then
+        find "${HTML_DST}.tmp" -name "index.html" -exec sed -i "s|name=\"termix-base-path\" content=\"\"|name=\"termix-base-path\" content=\"${clean_base_path}\"|g" {} +
+    fi
+    printf '%s' "$stamp" > "${HTML_DST}.tmp/.pterodactyl-stamp"
+    rm -rf "$HTML_DST"
+    mv "${HTML_DST}.tmp" "$HTML_DST"
 fi
 
 if [ -z "${STARTUP:-}" ]; then
